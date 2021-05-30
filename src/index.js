@@ -2,23 +2,34 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
-import reportWebVitals from './reportWebVitals';
-import {createStore} from 'redux';
+import registerServiceWorker from './registerServiceWorker';
+import {createStore, applyMiddleware, compose} from 'redux';
+import rootReducer from './store/reducers/rootReducer';
 import {Provider} from 'react-redux';
-import rootReducer from './store/Reducers/rootReducer';
+import thunk from 'redux-thunk';
+import {reduxFirestore, getFirestore} from 'redux-firestore';
+import {reactReduxFirebase, getFirebase} from 'react-redux-firebase';
+import fbConfig from './config/Config';
 
-const store = createStore(rootReducer);
-
-ReactDOM.render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <App />
-    </Provider>
-  </React.StrictMode>,
-  document.getElementById('root')
+const store = createStore(
+  rootReducer,
+  compose(
+    applyMiddleware(thunk.withExtraArgument({getFirebase, getFirestore})),
+    reactReduxFirebase(fbConfig, {
+      userProfile: 'users',
+      useFirestoreForProfile: true,
+      attachAuthIsReady: true,
+    }),
+    reduxFirestore(fbConfig) // redux bindings for firestore
+  )
 );
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+store.firebaseAuthIsReady.then(() => {
+  ReactDOM.render(
+    <Provider store={store}>
+      <App />
+    </Provider>,
+    document.getElementById('root')
+  );
+  registerServiceWorker();
+});
